@@ -67,7 +67,8 @@ jobs:
         shell: bash
         run: echo "ANDROIDX_JDK21=$JAVA_HOME" >> "$GITHUB_ENV"
 
-      - name: Compile desktop-native and run Linux tests
+      # Only the headers of SDL are installed here, so the test binary cannot be linked.
+      - name: Compile desktop-native main and test sources
         shell: bash
         run: |
           ./gradlew --no-daemon --stacktrace --console=plain \
@@ -75,7 +76,7 @@ jobs:
             -Pcompose.platforms=LinuxX64 \
             -Pjetbrains.publication.groupPrefix=dev.brahmkshatriya \
             :compose:desktop:desktop-native:compileKotlinLinuxX64 \
-            :compose:desktop:desktop-native:linuxX64Test
+            :compose:desktop:desktop-native:compileTestKotlinLinuxX64
 
   macos:
     name: 'macOS arm64 Metal interop'
