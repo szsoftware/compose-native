@@ -93,6 +93,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.viewinterop.GpuInteropRegistry
 import androidx.compose.ui.viewinterop.LocalGpuInteropRegistry
+import androidx.compose.ui.viewinterop.LocalMetalInteropRegistry
+import androidx.compose.ui.viewinterop.MetalInteropRegistry
 import androidx.compose.ui.viewinterop.LocalNativePlatformViewHost
 import androidx.compose.ui.viewinterop.LocalNativeViewInvalidationDispatcher
 import androidx.compose.ui.viewinterop.NativePlatformViewHost
@@ -1940,6 +1942,7 @@ internal class NativeWindowHost(
     private var sdlWindow: CPointer<SDL_Window>? = null
     private var skiaLayer: SkiaLayer? = null
     private var gpuInteropRegistry: GpuInteropRegistry? = null
+    private var metalInteropRegistry: MetalInteropRegistry? = null
     private var nativePlatformViewHost: NativePlatformViewHost? = null
     private var scene: androidx.compose.ui.scene.ComposeScene? = null
     private var metrics: RenderMetrics? = null
@@ -2330,6 +2333,7 @@ internal class NativeWindowHost(
             } else {
                 null
             }
+        metalInteropRegistry = MetalInteropRegistry.createFor(nativeLayer)
         currentTitle = title
         currentIcon = icon
         currentVisible = visible
@@ -2409,6 +2413,7 @@ internal class NativeWindowHost(
                     LocalPlatformAccentColor provides application.systemAccentColorState.value,
                     LocalNativeWindowHost provides this@NativeWindowHost,
                     LocalGpuInteropRegistry provides gpuInteropRegistry,
+                    LocalMetalInteropRegistry provides metalInteropRegistry,
                     LocalNativePlatformViewHost provides nativePlatformViewHost,
                     LocalNativeViewInvalidationDispatcher provides
                         { block ->
@@ -3603,6 +3608,7 @@ internal class NativeWindowHost(
         hitTestReference?.dispose()
         hitTestReference = null
         gpuInteropRegistry = null
+        metalInteropRegistry = null
         skiaLayer?.detach()
         skiaLayer = null
         nativePlatformViewHost?.setInteropHitTest(null)

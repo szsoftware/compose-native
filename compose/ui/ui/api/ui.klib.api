@@ -130,6 +130,7 @@ final enum class androidx.compose.ui.viewinterop/InteropPointerEventType : kotli
 
 final enum class androidx.compose.ui.viewinterop/InteropRenderBackend : kotlin/Enum<androidx.compose.ui.viewinterop/InteropRenderBackend> { // androidx.compose.ui.viewinterop/InteropRenderBackend|null[0]
     enum entry Cpu // androidx.compose.ui.viewinterop/InteropRenderBackend.Cpu|null[0]
+    enum entry Metal // androidx.compose.ui.viewinterop/InteropRenderBackend.Metal|null[0]
     enum entry OpenGl // androidx.compose.ui.viewinterop/InteropRenderBackend.OpenGl|null[0]
 
     final val entries // androidx.compose.ui.viewinterop/InteropRenderBackend.entries|#static{}entries[0]
@@ -2780,6 +2781,27 @@ final class androidx.compose.ui.viewinterop/InteropRenderTarget { // androidx.co
         final fun <get-width>(): kotlin/Int // androidx.compose.ui.viewinterop/InteropRenderTarget.width.<get-width>|<get-width>(){}[0]
 }
 
+final class androidx.compose.ui.viewinterop/MetalInteropRenderTarget { // androidx.compose.ui.viewinterop/MetalInteropRenderTarget|null[0]
+    constructor <init>(kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed>, kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed>, kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed>, kotlin/Int, kotlin/Int, kotlin/Long, kotlin/String, kotlin/Float = ...) // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.<init>|<init>(kotlinx.cinterop.CPointer<out|kotlinx.cinterop.CPointed>;kotlinx.cinterop.CPointer<out|kotlinx.cinterop.CPointed>;kotlinx.cinterop.CPointer<out|kotlinx.cinterop.CPointed>;kotlin.Int;kotlin.Int;kotlin.Long;kotlin.String;kotlin.Float){}[0]
+
+    final val commandQueue // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.commandQueue|{}commandQueue[0]
+        final fun <get-commandQueue>(): kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed> // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.commandQueue.<get-commandQueue>|<get-commandQueue>(){}[0]
+    final val density // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.density|{}density[0]
+        final fun <get-density>(): kotlin/Float // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.density.<get-density>|<get-density>(){}[0]
+    final val device // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.device|{}device[0]
+        final fun <get-device>(): kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed> // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.device.<get-device>|<get-device>(){}[0]
+    final val height // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.height|{}height[0]
+        final fun <get-height>(): kotlin/Int // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.height.<get-height>|<get-height>(){}[0]
+    final val pixelFormat // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.pixelFormat|{}pixelFormat[0]
+        final fun <get-pixelFormat>(): kotlin/Long // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.pixelFormat.<get-pixelFormat>|<get-pixelFormat>(){}[0]
+    final val renderer // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.renderer|{}renderer[0]
+        final fun <get-renderer>(): kotlin/String // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.renderer.<get-renderer>|<get-renderer>(){}[0]
+    final val texture // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.texture|{}texture[0]
+        final fun <get-texture>(): kotlinx.cinterop/CPointer<out kotlinx.cinterop/CPointed> // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.texture.<get-texture>|<get-texture>(){}[0]
+    final val width // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.width|{}width[0]
+        final fun <get-width>(): kotlin/Int // androidx.compose.ui.viewinterop/MetalInteropRenderTarget.width.<get-width>|<get-width>(){}[0]
+}
+
 final class androidx.compose.ui.viewinterop/NativeInteropView { // androidx.compose.ui.viewinterop/NativeInteropView|null[0]
     constructor <init>(kotlin/Function1<androidx.compose.ui.viewinterop/InteropRenderTarget, kotlin/Boolean>, kotlin/Boolean = ..., kotlin/Function0<kotlin/Unit> = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropPointerEvent, kotlin/Boolean>? = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropKeyEvent, kotlin/Boolean>? = ..., kotlin/Function1<kotlin/Boolean, kotlin/Unit>? = ...) // androidx.compose.ui.viewinterop/NativeInteropView.<init>|<init>(kotlin.Function1<androidx.compose.ui.viewinterop.InteropRenderTarget,kotlin.Boolean>;kotlin.Boolean;kotlin.Function0<kotlin.Unit>;kotlin.Function1<androidx.compose.ui.viewinterop.InteropPointerEvent,kotlin.Boolean>?;kotlin.Function1<androidx.compose.ui.viewinterop.InteropKeyEvent,kotlin.Boolean>?;kotlin.Function1<kotlin.Boolean,kotlin.Unit>?){}[0]
 
@@ -2792,6 +2814,7 @@ final class androidx.compose.ui.viewinterop/NativeInteropView { // androidx.comp
 
     final fun close() // androidx.compose.ui.viewinterop/NativeInteropView.close|close(){}[0]
     final fun render(androidx.compose.ui.viewinterop/InteropRenderTarget): kotlin/Boolean // androidx.compose.ui.viewinterop/NativeInteropView.render|render(androidx.compose.ui.viewinterop.InteropRenderTarget){}[0]
+    final fun renderMetal(androidx.compose.ui.viewinterop/MetalInteropRenderTarget): kotlin/Boolean // androidx.compose.ui.viewinterop/NativeInteropView.renderMetal|renderMetal(androidx.compose.ui.viewinterop.MetalInteropRenderTarget){}[0]
     final fun renderOpenGl(androidx.compose.ui.viewinterop/OpenGlInteropRenderTarget): kotlin/Boolean // androidx.compose.ui.viewinterop/NativeInteropView.renderOpenGl|renderOpenGl(androidx.compose.ui.viewinterop.OpenGlInteropRenderTarget){}[0]
     final fun requestRender() // androidx.compose.ui.viewinterop/NativeInteropView.requestRender|requestRender(){}[0]
     final fun sendKeyEvent(androidx.compose.ui.viewinterop/InteropKeyEvent): kotlin/Boolean // androidx.compose.ui.viewinterop/NativeInteropView.sendKeyEvent|sendKeyEvent(androidx.compose.ui.viewinterop.InteropKeyEvent){}[0]
@@ -2800,6 +2823,7 @@ final class androidx.compose.ui.viewinterop/NativeInteropView { // androidx.comp
     final fun setRenderInvalidationCallback(kotlin/Function0<kotlin/Unit>?) // androidx.compose.ui.viewinterop/NativeInteropView.setRenderInvalidationCallback|setRenderInvalidationCallback(kotlin.Function0<kotlin.Unit>?){}[0]
 
     final object Companion { // androidx.compose.ui.viewinterop/NativeInteropView.Companion|null[0]
+        final fun metal(kotlin/Function1<androidx.compose.ui.viewinterop/MetalInteropRenderTarget, kotlin/Boolean>, kotlin/Boolean = ..., kotlin/Function0<kotlin/Unit> = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropPointerEvent, kotlin/Boolean>? = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropKeyEvent, kotlin/Boolean>? = ..., kotlin/Function1<kotlin/Boolean, kotlin/Unit>? = ...): androidx.compose.ui.viewinterop/NativeInteropView // androidx.compose.ui.viewinterop/NativeInteropView.Companion.metal|metal(kotlin.Function1<androidx.compose.ui.viewinterop.MetalInteropRenderTarget,kotlin.Boolean>;kotlin.Boolean;kotlin.Function0<kotlin.Unit>;kotlin.Function1<androidx.compose.ui.viewinterop.InteropPointerEvent,kotlin.Boolean>?;kotlin.Function1<androidx.compose.ui.viewinterop.InteropKeyEvent,kotlin.Boolean>?;kotlin.Function1<kotlin.Boolean,kotlin.Unit>?){}[0]
         final fun openGl(kotlin/Function1<androidx.compose.ui.viewinterop/OpenGlInteropRenderTarget, kotlin/Boolean>, kotlin/Boolean = ..., kotlin/Function0<kotlin/Unit> = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropPointerEvent, kotlin/Boolean>? = ..., kotlin/Function1<androidx.compose.ui.viewinterop/InteropKeyEvent, kotlin/Boolean>? = ..., kotlin/Function1<kotlin/Boolean, kotlin/Unit>? = ...): androidx.compose.ui.viewinterop/NativeInteropView // androidx.compose.ui.viewinterop/NativeInteropView.Companion.openGl|openGl(kotlin.Function1<androidx.compose.ui.viewinterop.OpenGlInteropRenderTarget,kotlin.Boolean>;kotlin.Boolean;kotlin.Function0<kotlin.Unit>;kotlin.Function1<androidx.compose.ui.viewinterop.InteropPointerEvent,kotlin.Boolean>?;kotlin.Function1<androidx.compose.ui.viewinterop.InteropKeyEvent,kotlin.Boolean>?;kotlin.Function1<kotlin.Boolean,kotlin.Unit>?){}[0]
     }
 }
@@ -4711,6 +4735,7 @@ final val androidx.compose.ui.spatial/androidx_compose_ui_spatial_RelativeLayout
 final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop|#static{}androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop[0]
 final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop|#static{}androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop[0]
 final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop|#static{}androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop[0]
+final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop|#static{}androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop[0]
 final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_NativeInteropView$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_NativeInteropView$stableprop|#static{}androidx_compose_ui_viewinterop_NativeInteropView$stableprop[0]
 final val androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop|#static{}androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop[0]
 final val androidx.compose.ui.window/androidx_compose_ui_window_DialogProperties$stableprop // androidx.compose.ui.window/androidx_compose_ui_window_DialogProperties$stableprop|#static{}androidx_compose_ui_window_DialogProperties$stableprop[0]
@@ -5244,6 +5269,7 @@ final fun androidx.compose.ui.text/rememberTextMeasurer(kotlin/Int, androidx.com
 final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop_getter|androidx_compose_ui_viewinterop_InteropKeyEvent$stableprop_getter(){}[0]
 final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop_getter|androidx_compose_ui_viewinterop_InteropPointerEvent$stableprop_getter(){}[0]
 final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop_getter|androidx_compose_ui_viewinterop_InteropRenderTarget$stableprop_getter(){}[0]
+final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop_getter|androidx_compose_ui_viewinterop_MetalInteropRenderTarget$stableprop_getter(){}[0]
 final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_NativeInteropView$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_NativeInteropView$stableprop_getter|androidx_compose_ui_viewinterop_NativeInteropView$stableprop_getter(){}[0]
 final fun androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop_getter(): kotlin/Int // androidx.compose.ui.viewinterop/androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop_getter|androidx_compose_ui_viewinterop_OpenGlInteropRenderTarget$stableprop_getter(){}[0]
 final fun androidx.compose.ui.window/Dialog(kotlin/Function0<kotlin/Unit>, androidx.compose.ui.window/DialogProperties?, kotlin/Function2<androidx.compose.runtime/Composer, kotlin/Int, kotlin/Unit>, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // androidx.compose.ui.window/Dialog|Dialog(kotlin.Function0<kotlin.Unit>;androidx.compose.ui.window.DialogProperties?;kotlin.Function2<androidx.compose.runtime.Composer,kotlin.Int,kotlin.Unit>;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]

@@ -19,3 +19,5 @@ internal actual fun SkiaLayer.drawNativeOpenGlTexture(
 ) {
     drawOpenGlTexture(textureId, width, height, canvas)
 }
+
+internal actual fun SkiaLayer.nativeMetalInterop(): NativeMetalInterop? = null

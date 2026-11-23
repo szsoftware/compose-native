@@ -64,6 +64,8 @@ import org.jetbrains.skiko.SkiaLayer
 
 internal val LocalGpuInteropRegistry = staticCompositionLocalOf<GpuInteropRegistry?> { null }
 
+internal val LocalMetalInteropRegistry = staticCompositionLocalOf<MetalInteropRegistry?> { null }
+
 internal val LocalNativeViewInvalidationDispatcher =
     staticCompositionLocalOf<((() -> Unit) -> Unit)> { { it() } }
 
@@ -77,6 +79,27 @@ internal val LocalNativeViewInvalidationDispatcher =
 @Composable
 fun isOpenGlInteropAvailable(): Boolean =
     LocalGpuInteropRegistry.current?.isAvailable == true
+
+/**
+ * Returns whether Metal-backed [NativeView] rendering is available in the current window.
+ *
+ * This is true for macOS windows rendered with Metal, the default renderer there. Windows rendered
+ * with OpenGL, and all Linux and Windows hosts, return false; use [isOpenGlInteropAvailable] there.
+ */
+@ExperimentalComposeUiApi
+@Composable
+fun isMetalInteropAvailable(): Boolean = LocalMetalInteropRegistry.current?.isAvailable == true
+
+/** A GPU-backed native view layer that renders a [NativeInteropView] into a borrowed texture. */
+internal interface NativeGpuViewLayer : AutoCloseable {
+    fun resize(value: IntSize, density: Float)
+
+    fun updateDensity(value: Float): Boolean
+
+    fun requestRender()
+
+    fun draw(canvas: androidx.compose.ui.graphics.Canvas): Boolean
+}
 
 internal class GpuInteropRegistry(private val layer: SkiaLayer) {
     val rendererDescription: String =
@@ -148,14 +171,14 @@ internal class GpuNativeViewRenderInvalidation {
 internal class GpuNativeViewLayer(
     private val registry: GpuInteropRegistry,
     private val view: InteropView,
-) : AutoCloseable {
+) : NativeGpuViewLayer {
     private var handle: COpaquePointer? = checkNotNull(kgl_layer_create())
     private var size = IntSize.Zero
     private var density = 1f
     private val renderInvalidation = GpuNativeViewRenderInvalidation()
     private var hasRendered = false
 
-    fun resize(value: IntSize, density: Float) {
+    override fun resize(value: IntSize, density: Float) {
         if (size != value || this.density != density) {
             size = value
             this.density = density
@@ -163,14 +186,14 @@ internal class GpuNativeViewLayer(
         }
     }
 
-    fun updateDensity(value: Float): Boolean {
+    override fun updateDensity(value: Float): Boolean {
         if (density == value) return false
         density = value
         renderInvalidation.request()
         return true
     }
 
-    fun requestRender() {
+    override fun requestRender() {
         renderInvalidation.request()
     }
 
@@ -204,7 +227,7 @@ internal class GpuNativeViewLayer(
         return hasRendered
     }
 
-    fun draw(canvas: androidx.compose.ui.graphics.Canvas): Boolean {
+    override fun draw(canvas: androidx.compose.ui.graphics.Canvas): Boolean {
         val layer = handle ?: return false
         if (!registry.isAvailable) return false
         if (!updateTexture()) return false
@@ -217,6 +240,133 @@ internal class GpuNativeViewLayer(
         val layer = handle ?: return
         handle = null
         registry.destroyLayer(layer)
+    }
+}
+
+internal class MetalInteropRegistry(
+    private val layer: SkiaLayer,
+    private val interop: NativeMetalInterop,
+) {
+    fun create(view: InteropView): NativeGpuViewLayer = MetalNativeViewLayer(this, view)
+
+    internal val isAvailable: Boolean
+        get() = layer.renderApi == GraphicsApi.METAL
+
+    internal val device
+        get() = interop.device
+
+    internal val commandQueue
+        get() = interop.commandQueue
+
+    internal val rendererDescription: String
+        get() = interop.rendererDescription
+
+    internal fun createTexture(width: Int, height: Int): NativeMetalTexture? =
+        interop.createTexture(width, height)
+
+    internal fun withExternalMetal(block: () -> Boolean): Boolean {
+        if (!isAvailable) return false
+        return interop.withContext(block)
+    }
+
+    internal fun drawTexture(
+        texture: NativeMetalTexture,
+        canvas: androidx.compose.ui.graphics.Canvas,
+    ): Boolean {
+        if (!isAvailable) return false
+        interop.draw(texture, canvas.skiaCanvas)
+        return true
+    }
+
+    companion object {
+        /** Returns a registry when [layer] renders with Metal, otherwise null. */
+        fun createFor(layer: SkiaLayer): MetalInteropRegistry? =
+            layer.nativeMetalInterop()?.let { MetalInteropRegistry(layer, it) }
+    }
+}
+
+/**
+ * Renders a Metal [NativeInteropView] into a Compose-owned `MTLTexture` and lets Skia sample it
+ * without readback. The texture is reallocated only when the view's pixel size changes.
+ */
+internal class MetalNativeViewLayer(
+    private val registry: MetalInteropRegistry,
+    private val view: InteropView,
+) : NativeGpuViewLayer {
+    private var texture: NativeMetalTexture? = null
+    private var closed = false
+    private var size = IntSize.Zero
+    private var density = 1f
+    private val renderInvalidation = GpuNativeViewRenderInvalidation()
+    private var hasRendered = false
+
+    override fun resize(value: IntSize, density: Float) {
+        if (size != value || this.density != density) {
+            size = value
+            this.density = density
+            renderInvalidation.request()
+        }
+    }
+
+    override fun updateDensity(value: Float): Boolean {
+        if (density == value) return false
+        density = value
+        renderInvalidation.request()
+        return true
+    }
+
+    override fun requestRender() {
+        renderInvalidation.request()
+    }
+
+    private fun prepareTexture(): NativeMetalTexture? {
+        val current = texture
+        if (current != null && current.width == size.width && current.height == size.height) {
+            return current
+        }
+        current?.close()
+        texture = null
+        hasRendered = false
+        return registry.createTexture(size.width, size.height)?.also { texture = it }
+    }
+
+    private fun render(): Boolean {
+        if (closed || !registry.isAvailable) return false
+        if (size.width <= 0 || size.height <= 0) return false
+        val target = prepareTexture() ?: return false
+        return registry.withExternalMetal {
+            view.renderMetal(
+                MetalInteropRenderTarget(
+                    device = registry.device,
+                    commandQueue = registry.commandQueue,
+                    texture = target.handle,
+                    width = target.width,
+                    height = target.height,
+                    pixelFormat = target.pixelFormat,
+                    renderer = registry.rendererDescription,
+                    density = density,
+                )
+            )
+        }
+    }
+
+    private fun updateTexture(): Boolean {
+        if (renderInvalidation.consume(::render)) hasRendered = true
+        return hasRendered
+    }
+
+    override fun draw(canvas: androidx.compose.ui.graphics.Canvas): Boolean {
+        if (closed || !registry.isAvailable) return false
+        if (!updateTexture()) return false
+        val current = texture ?: return false
+        return registry.drawTexture(current, canvas)
+    }
+
+    override fun close() {
+        if (closed) return
+        closed = true
+        texture?.close()
+        texture = null
     }
 }
 
@@ -240,6 +390,8 @@ private class NativeViewFrame(size: IntSize) : AutoCloseable {
  *
  * CPU renderers receive a mutable Skia raster buffer. OpenGL renderers receive an FBO from the
  * window's current SDL context; its color texture is borrowed by Skia and drawn without readback.
+ * Metal renderers (macOS) receive a Compose-owned `MTLTexture` on the window's device and command
+ * queue, which Skia also samples without readback.
  * Compose transforms, clipping, content drawn above the view, and pointer input remain native to
  * the regular scene graph.
  */
@@ -255,18 +407,26 @@ fun NativeView(
     val density = LocalDensity.current.density
     val focusRequester = remember { FocusRequester() }
     val gpuRegistry = LocalGpuInteropRegistry.current
+    val metalRegistry = LocalMetalInteropRegistry.current
     val dispatchInvalidation = LocalNativeViewInvalidationDispatcher.current
-    val gpuLayer =
-        remember(view, gpuRegistry) {
-            if (view.backend == InteropRenderBackend.OpenGl) {
-                requireNotNull(gpuRegistry) {
-                        "OpenGL interop requires an OpenGL-backed Compose Native desktop window; " +
-                            "it is unavailable with the active renderer. Check " +
-                            "isOpenGlInteropAvailable() before creating an OpenGL NativeView."
-                    }
-                    .create(view)
-            } else {
-                null
+    val gpuLayer: NativeGpuViewLayer? =
+        remember(view, gpuRegistry, metalRegistry) {
+            when (view.backend) {
+                InteropRenderBackend.OpenGl ->
+                    requireNotNull(gpuRegistry) {
+                            "OpenGL interop requires an OpenGL-backed Compose Native desktop " +
+                                "window; it is unavailable with the active renderer. Check " +
+                                "isOpenGlInteropAvailable() before creating an OpenGL NativeView."
+                        }
+                        .create(view)
+                InteropRenderBackend.Metal ->
+                    requireNotNull(metalRegistry) {
+                            "Metal interop requires a Metal-backed Compose Native macOS window; " +
+                                "it is unavailable with the active renderer. Check " +
+                                "isMetalInteropAvailable() before creating a Metal NativeView."
+                        }
+                        .create(view)
+                InteropRenderBackend.Cpu -> null
             }
         }
     var nativeFrame by remember { mutableStateOf<NativeViewFrame?>(null) }

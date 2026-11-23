@@ -23,6 +23,9 @@ enum class InteropRenderBackend {
 
     /** Renders into an OpenGL framebuffer owned by the current Compose window. */
     OpenGl,
+
+    /** Renders into a Metal texture on the device and command queue of the Compose window. */
+    Metal,
 }
 
 /**
@@ -45,6 +48,43 @@ class OpenGlInteropRenderTarget(
     val width: Int,
     val height: Int,
     val internalFormat: Int,
+    val renderer: String,
+    val density: Float = 1f,
+)
+
+/**
+ * A Metal texture owned by the Compose window and lent to native code for one frame.
+ *
+ * All handles are borrowed Objective-C objects (`id<MTLDevice>`, `id<MTLCommandQueue>`,
+ * `id<MTLTexture>`) that stay valid only for the duration of [NativeInteropView.renderMetal].
+ * Native integrations may retain them for that call (for example to wrap [texture] in a wgpu or
+ * Skia texture) but must not use them afterwards; Compose replaces [texture] when the view is
+ * resized.
+ *
+ * [texture] is a 2D texture of [width] x [height] pixels whose first row is the top row, with the
+ * usages render target, shader read, shader write and pixel format view. Its contents are kept
+ * between frames, so a renderer that returns `false` leaves the previous frame visible. Compose
+ * draws it with premultiplied alpha.
+ *
+ * Work that writes [texture] must be committed to [commandQueue] before the renderer returns, so
+ * that it executes before Compose samples the texture in the same queue. A renderer that uses its
+ * own queue on [device] must instead wait until its last command buffer is scheduled
+ * (`waitUntilScheduled`) before it returns.
+ *
+ * @property device the `id<MTLDevice>` that Compose renders with
+ * @property commandQueue the `id<MTLCommandQueue>` on which Compose submits its frames
+ * @property texture the `id<MTLTexture>` to render into
+ * @property pixelFormat the texture's `MTLPixelFormat` raw value (`MTLPixelFormatRGBA8Unorm`)
+ * @property renderer a human-readable description of the Compose Metal renderer
+ * @property density the Compose density of the hosting view
+ */
+class MetalInteropRenderTarget(
+    val device: COpaquePointer,
+    val commandQueue: COpaquePointer,
+    val texture: COpaquePointer,
+    val width: Int,
+    val height: Int,
+    val pixelFormat: Long,
     val renderer: String,
     val density: Float = 1f,
 )
@@ -99,6 +139,7 @@ private constructor(
     val continuousRendering: Boolean,
     private val cpuRenderer: ((InteropRenderTarget) -> Boolean)?,
     private val openGlRenderer: ((OpenGlInteropRenderTarget) -> Boolean)?,
+    private val metalRenderer: ((MetalInteropRenderTarget) -> Boolean)? = null,
     private val releaser: () -> Unit = {},
     private val pointerHandler: ((InteropPointerEvent) -> Boolean)? = null,
     private val keyHandler: ((InteropKeyEvent) -> Boolean)? = null,
@@ -132,6 +173,7 @@ private constructor(
         continuousRendering,
         renderer,
         null,
+        null,
         releaser,
         pointerHandler,
         keyHandler,
@@ -148,6 +190,9 @@ private constructor(
     /** Renders an OpenGL frame, returning `true` when the target was changed. */
     fun renderOpenGl(target: OpenGlInteropRenderTarget): Boolean =
         checkNotNull(openGlRenderer)(target)
+
+    /** Renders a Metal frame, returning `true` when the target was changed. */
+    fun renderMetal(target: MetalInteropRenderTarget): Boolean = checkNotNull(metalRenderer)(target)
 
     /** Dispatches [event] to the pointer handler, returning whether it was consumed. */
     fun sendPointerEvent(event: InteropPointerEvent): Boolean =
@@ -200,6 +245,43 @@ private constructor(
             NativeInteropView(
                 InteropRenderBackend.OpenGl,
                 continuousRendering,
+                null,
+                renderer,
+                null,
+                releaser,
+                pointerHandler,
+                keyHandler,
+                focusHandler,
+            )
+
+        /**
+         * Creates an interop view that renders into a Metal texture owned by Compose.
+         *
+         * [renderer] runs on the UI thread after Compose has committed its pending work to the
+         * window's command queue, and should return `true` when it modified the target. Compose
+         * then samples the texture without readback. [releaser] is called when the view leaves
+         * composition. Metal interop is available on macOS when the window renders with Metal; see
+         * `isMetalInteropAvailable()`.
+         *
+         * @param renderer renders the current frame into the supplied Metal target
+         * @param continuousRendering whether Compose should request frames continuously
+         * @param releaser releases native resources owned by this view
+         * @param pointerHandler optional pointer-input handler
+         * @param keyHandler optional keyboard-input handler
+         * @param focusHandler optional callback invoked when focus changes
+         */
+        fun metal(
+            renderer: (MetalInteropRenderTarget) -> Boolean,
+            continuousRendering: Boolean = false,
+            releaser: () -> Unit = {},
+            pointerHandler: ((InteropPointerEvent) -> Boolean)? = null,
+            keyHandler: ((InteropKeyEvent) -> Boolean)? = null,
+            focusHandler: ((Boolean) -> Unit)? = null,
+        ): NativeInteropView =
+            NativeInteropView(
+                InteropRenderBackend.Metal,
+                continuousRendering,
+                null,
                 null,
                 renderer,
                 releaser,

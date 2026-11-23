@@ -1,0 +1,141 @@
+name: Metal interop
+
+# Builds the Skiko fork branch with Metal texture interop, publishes it to Maven Local and runs the
+# macOS desktop-native tests against it. The macOS runners expose a paravirtualized Metal device.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skiko_ref:
+        description: 'Branch or commit of szsoftware/skiko-native'
+        required: false
+        default: 'claude/project-thread-d7h6or'
+  push:
+    branches:
+      - 'claude/**'
+
+env:
+  SKIKO_REPOSITORY: szsoftware/skiko-native
+  SKIKO_REF: ${{ github.event.inputs.skiko_ref || 'claude/project-thread-d7h6or' }}
+  SKIKO_VERSION: 0.156.1-SNAPSHOT
+
+jobs:
+  linux:
+    name: 'Linux x64 compile (shared desktop-native code)'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Linux native headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            libdbus-1-dev \
+            libfontconfig1-dev \
+            libfreetype-dev \
+            libgl-dev \
+            libpng-dev \
+            libwayland-dev \
+            libx11-dev \
+            pkg-config \
+            zlib1g-dev
+          sdl_archive="$RUNNER_TEMP/SDL3-3.4.10.tar.gz"
+          curl --fail --location --silent --show-error \
+            --output "$sdl_archive" \
+            https://github.com/libsdl-org/SDL/releases/download/release-3.4.10/SDL3-3.4.10.tar.gz
+          echo '12b34280415ec8418c864408b93d008a20a6530687ee613d60bfbd20411f2785  '"$sdl_archive" | sha256sum --check
+          tar --extract --gzip --file "$sdl_archive" --directory "$RUNNER_TEMP"
+          sudo cp --recursive "$RUNNER_TEMP/SDL3-3.4.10/include/SDL3" /usr/include/
+          dbus_arch_include="$(pkg-config --variable=libdir dbus-1)/dbus-1.0/include"
+          sudo mkdir --parents /usr/lib/dbus-1.0
+          if [[ ! -e /usr/lib/dbus-1.0/include ]]; then
+            sudo ln --symbolic "$dbus_arch_include" /usr/lib/dbus-1.0/include
+          fi
+
+      - name: Export AndroidX JDK location
+        shell: bash
+        run: echo "ANDROIDX_JDK21=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Compile desktop-native and run Linux tests
+        shell: bash
+        run: |
+          ./gradlew --no-daemon --stacktrace --console=plain \
+            --no-configuration-cache --configure-on-demand \
+            -Pcompose.platforms=LinuxX64 \
+            -Pjetbrains.publication.groupPrefix=dev.brahmkshatriya \
+            :compose:desktop:desktop-native:compileKotlinLinuxX64 \
+            :compose:desktop:desktop-native:linuxX64Test
+
+  macos:
+    name: 'macOS arm64 Metal interop'
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SKIKO_REPOSITORY }}
+          ref: ${{ env.SKIKO_REF }}
+          path: skiko-native
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Show toolchain and Metal device
+        shell: bash
+        run: |
+          xcodebuild -version
+          system_profiler SPDisplaysDataType | sed -n '1,30p'
+          echo "ANDROIDX_JDK21=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Install LLVM for Skiko
+        shell: bash
+        run: brew install llvm
+
+      - name: Publish Skiko fork to Maven Local
+        shell: bash
+        working-directory: skiko-native
+        run: |
+          ./gradlew -p skiko --no-daemon --stacktrace --console=plain \
+            -Pskiko.native.enabled=true \
+            -Pskiko.arch=arm64 \
+            publishToMavenLocal
+          ls "$HOME/.m2/repository/dev/brahmkshatriya/skiko"
+
+      - name: Run desktop-native macOS tests against the Skiko fork
+        shell: bash
+        run: |
+          # Extra repositories with the highest priority, see buildSrc-fork/repos.gradle.
+          export METALAVA_REPO="file://$HOME/.m2/repository"
+          ./gradlew --no-daemon --stacktrace --console=plain \
+            --no-configuration-cache --configure-on-demand \
+            -Pcompose.platforms=MacosArm64 \
+            -Pjetbrains.publication.groupPrefix=dev.brahmkshatriya \
+            "-Pcompose.native.skiko.version=$SKIKO_VERSION" \
+            :compose:desktop:desktop-native:compileKotlinMacosArm64 \
+            :compose:desktop:desktop-native:macosArm64Test
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metal-interop-test-reports
+          path: |
+            compose/desktop/desktop-native/build/reports/tests
+            compose/desktop/desktop-native/build/test-results
+          retention-days: 7
