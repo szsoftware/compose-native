@@ -178,7 +178,9 @@ val prepareMacosSdl by tasks.registering {
                 mount.walkTopDown().firstOrNull { candidate ->
                     candidate.isDirectory &&
                         candidate.name == "SDL3.framework" &&
-                        candidate.path.contains("macos", ignoreCase = true)
+                        // Only the path inside the image: the mount point itself lies in
+                        // build/macos-sdl and would match every slice of the xcframework.
+                        candidate.relativeTo(mount).path.contains("macos", ignoreCase = true)
                 } ?: mount.walkTopDown().firstOrNull { candidate ->
                     candidate.isDirectory && candidate.name == "SDL3.framework"
                 } ?: error("SDL3.framework was not found in ${archive.name}")
